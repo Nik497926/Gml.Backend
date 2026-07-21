@@ -1,0 +1,141 @@
+name: Auto Release
+
+# Creates our version tag + GitHub Release for the installer.
+# Optionally tags Api/Client/Proxy/Skins (same tag → their Docker workflows build GHCR images).
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version tag (empty = auto vYYYY.M.D.<run_number>)"
+        required: false
+        type: string
+      tag_services:
+        description: "Also push the same git tag to Api/Client/Proxy/Skins"
+        required: false
+        type: boolean
+        default: true
+  push:
+    branches:
+      - master
+    paths:
+      - "installer/**"
+      - "docker-compose-installer.yml"
+      - "docker-compose-prod.yml"
+      - ".github/workflows/auto-release.yml"
+      - "docs/RELEASE-VERSIONS.md"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Create release ${{ inputs.version || 'auto' }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        env:
+          INPUT_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || '' }}
+        run: |
+          set -eu
+          if [ -n "${INPUT_VERSION}" ]; then
+            VERSION="${INPUT_VERSION}"
+          else
+            # Calendar build id: v2026.7.21.42
+            VERSION="v$(date -u +%-Y.%-m.%-d).${GITHUB_RUN_NUMBER}"
+          fi
+
+          case "$VERSION" in
+            v*) ;;
+            *) VERSION="v${VERSION}" ;;
+          esac
+
+          if git rev-parse -q --verify "refs/tags/${VERSION}" >/dev/null; then
+            echo "Tag ${VERSION} already exists"
+            exit 1
+          fi
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: ${VERSION}"
+
+      - name: Create Backend tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -eu
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$VERSION" -m "Release ${VERSION}"
+          git push origin "refs/tags/${VERSION}"
+
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --notes "Automated release \`${VERSION}\`.
+
+          Docker images (after service tags are built):
+          - \`ghcr.io/nik497926/gml.web.api:${VERSION}\`
+          - \`ghcr.io/nik497926/gml.web.client:${VERSION}\`
+          - \`ghcr.io/nik497926/gml.web.proxy:${VERSION}\`
+          - \`ghcr.io/nik497926/gml.web.skin.service:${VERSION}\`
+
+          Installer picks this release automatically when it is the latest stable."
+
+      - name: Tag service repositories
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.tag_services }}
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          # Fine-grained or classic PAT with contents:write on Api/Client/Proxy/Skin repos
+          RELEASE_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+        run: |
+          set -eu
+          if [ -z "${RELEASE_TOKEN:-}" ]; then
+            echo "::warning::SECRET RELEASE_TOKEN is not set. Backend release was created, but service repos were not tagged."
+            echo "Add a PAT as repository secret RELEASE_TOKEN (contents: write on Gml.Web.Api, Gml.Web.Client, Gml.Web.Proxy, Gml.Web.Skin.Service)."
+            exit 0
+          fi
+
+          SHA="${GITHUB_SHA}"
+          repos="Nik497926/Gml.Web.Api Nik497926/Gml.Web.Client Nik497926/Gml.Web.Proxy Nik497926/Gml.Web.Skin.Service"
+
+          for repo in $repos; do
+            echo "Tagging ${repo} @ ${SHA} → ${VERSION}"
+            # Use each repo's default branch HEAD if Backend SHA is unrelated (submodules are separate remotes).
+            default_sha=$(curl -fsSL \
+              -H "Authorization: Bearer ${RELEASE_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${repo}" | jq -r '.default_branch')
+
+            head_sha=$(curl -fsSL \
+              -H "Authorization: Bearer ${RELEASE_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${repo}/git/ref/heads/${default_sha}" | jq -r '.object.sha')
+
+            http_code=$(curl -sS -o /tmp/tag-resp.json -w "%{http_code}" \
+              -X POST \
+              -H "Authorization: Bearer ${RELEASE_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${repo}/git/refs" \
+              -d "{\"ref\":\"refs/tags/${VERSION}\",\"sha\":\"${head_sha}\"}")
+
+            if [ "$http_code" = "201" ]; then
+              echo "Created tag ${VERSION} on ${repo} (${head_sha})"
+            elif [ "$http_code" = "422" ] && grep -qi already /tmp/tag-resp.json; then
+              echo "Tag ${VERSION} already exists on ${repo}"
+            else
+              echo "Failed to tag ${repo} (HTTP ${http_code})"
+              cat /tmp/tag-resp.json
+              exit 1
+            fi
+          done
