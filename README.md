@@ -22,7 +22,7 @@ Together, these services offer a robust foundation for managing Minecraft game p
 The easiest way to start the installation manager:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh
 ```
 
 Gml Manager will ask for the action, installation directory, and version interactively. The version prompt defaults to the latest stable GitHub tag. The default installation directory is `/srv/gml`.
@@ -30,26 +30,26 @@ Gml Manager will ask for the action, installation directory, and version interac
 If you are already running as `root`, you can use `sh` without `sudo`:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sh
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sh
 ```
 
 For a non-interactive installation, pass arguments through `sh -s --`:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- install --dir /srv/gml
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- install --dir /srv/gml
 ```
 
 Pass `--version` only when you want to pin a specific Docker image tag:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- install --version v2025.3.2 --dir /srv/gml
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- install --version v2025.3.2 --dir /srv/gml
 ```
 
 Use these commands to update or remove the installation:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- update --dir /srv/gml
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- delete --dir /srv/gml
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- update --dir /srv/gml
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- delete --dir /srv/gml
 ```
 
 ## Installation Instructions
@@ -59,7 +59,7 @@ curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/
 Clone the stable version of the repository using the following command:
 
 ```bash
-git clone --recursive https://github.com/GamerVII-NET/Gml.Backend.git
+git clone --recursive https://github.com/Nik497926/Gml.Backend.git
 ```
 
 ### Step 2: Navigate to the Project Directory

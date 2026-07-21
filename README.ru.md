@@ -22,7 +22,7 @@ Gml.Backend — комплексный проект для быстрого ра
 Самый простой способ запустить менеджер установки:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh
 ```
 
 Gml Manager интерактивно предложит выбрать действие, директорию установки и версию. По умолчанию используется последний стабильный тег GitHub, а проект устанавливается в `/srv/gml`.
@@ -30,26 +30,26 @@ Gml Manager интерактивно предложит выбрать дейс�
 Если вы уже работаете от имени `root`, используйте `sh` без `sudo`:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sh
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sh
 ```
 
 Для установки без интерактивных запросов передайте аргументы через `sh -s --`:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- install --dir /srv/gml
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- install --dir /srv/gml
 ```
 
 Указывайте `--version`, только если хотите закрепить определённый тег Docker-образов:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- install --version v2025.3.2 --dir /srv/gml
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- install --version v2025.3.2 --dir /srv/gml
 ```
 
 Для обновления или удаления используйте следующие команды:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- update --dir /srv/gml
-curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- delete --dir /srv/gml
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- update --dir /srv/gml
+curl -sSL https://raw.githubusercontent.com/Nik497926/Gml.Backend/refs/heads/master/installer/gml-manager.sh | sudo sh -s -- delete --dir /srv/gml
 ```
 
 ## Установка вручную
@@ -59,7 +59,7 @@ curl -sSL https://raw.githubusercontent.com/Gml-Launcher/Gml.Backend/refs/heads/
 Клонируйте стабильную версию репозитория:
 
 ```bash
-git clone --recursive https://github.com/GamerVII-NET/Gml.Backend.git
+git clone --recursive https://github.com/Nik497926/Gml.Backend.git
 ```
 
 ### Шаг 2. Перейдите в директорию проекта

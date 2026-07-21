@@ -3,7 +3,7 @@
 services:
 
   gml-web-api:
-    image: ghcr.io/gml-launcher/gml.web.api:master
+    image: ghcr.io/nik497926/gml.web.api:master
     container_name: gml-web-api
     restart: always
     volumes:
@@ -34,7 +34,7 @@ services:
       - gml-network
 
   gml-web-proxy:
-    image: ghcr.io/gml-launcher/gml.web.proxy:master
+    image: ghcr.io/nik497926/gml.web.proxy:master
     container_name: gml-web-proxy
     restart: always
     ports:
@@ -52,7 +52,7 @@ services:
       - gml-network
 
   gml-web-frontend:
-    image: ghcr.io/gml-launcher/gml.web.client:master
+    image: ghcr.io/nik497926/gml.web.client:master
     container_name: gml-web-frontend
     restart: always
     ports:
@@ -68,7 +68,7 @@ services:
       - TZ=Europe/Moscow
 
   gml-web-skins:
-    image: ghcr.io/gml-launcher/gml.web.skin.service:master
+    image: ghcr.io/nik497926/gml.web.skin.service:master
     container_name: gml-web-skins
     restart: always
     ports:
