@@ -107,11 +107,33 @@ jobs:
             exit 1
           fi
 
-          SHA="${GITHUB_SHA}"
+          PKG_VERSION="${VERSION#v}"
+
+          # Bump Gml.Web.Client package.json before tagging so the tag includes the release version.
+          echo "Bumping Nik497926/Gml.Web.Client package.json → ${PKG_VERSION}"
+          rm -rf /tmp/gml-web-client
+          git clone --depth 1 \
+            "https://x-access-token:${RELEASE_TOKEN}@github.com/Nik497926/Gml.Web.Client.git" \
+            /tmp/gml-web-client
+          (
+            cd /tmp/gml-web-client
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            npm version "$PKG_VERSION" --no-git-tag-version --allow-same-version
+            git add package.json package-lock.json
+            if git diff --cached --quiet; then
+              echo "Client package.json already at ${PKG_VERSION}"
+            else
+              git commit -m "chore: bump package.json to ${PKG_VERSION}"
+              git push origin HEAD:master
+              echo "Pushed Client package.json ${PKG_VERSION}"
+            fi
+          )
+
           repos="Nik497926/Gml.Web.Api Nik497926/Gml.Web.Client Nik497926/Gml.Web.Proxy Nik497926/Gml.Web.Skin.Service"
 
           for repo in $repos; do
-            echo "Tagging ${repo} @ ${SHA} → ${VERSION}"
+            echo "Tagging ${repo} → ${VERSION}"
             # Use each repo's default branch HEAD if Backend SHA is unrelated (submodules are separate remotes).
             default_sha=$(curl -fsSL \
               -H "Authorization: Bearer ${RELEASE_TOKEN}" \
