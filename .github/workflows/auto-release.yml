@@ -119,7 +119,19 @@ jobs:
             cd /tmp/gml-web-client
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            npm version "$PKG_VERSION" --no-git-tag-version --allow-same-version
+            # npm version mis-parses 4-part tags like 2026.7.21.3 — write JSON directly.
+            export PKG_VERSION
+            node <<'EOF'
+            const fs = require('fs');
+            const version = process.env.PKG_VERSION;
+            for (const file of ['package.json', 'package-lock.json']) {
+              if (!fs.existsSync(file)) continue;
+              const pkg = JSON.parse(fs.readFileSync(file, 'utf8'));
+              pkg.version = version;
+              if (pkg.packages && pkg.packages['']) pkg.packages[''].version = version;
+              fs.writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`);
+            }
+            EOF
             git add package.json package-lock.json
             if git diff --cached --quiet; then
               echo "Client package.json already at ${PKG_VERSION}"
