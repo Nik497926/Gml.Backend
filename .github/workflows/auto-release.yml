@@ -101,9 +101,10 @@ jobs:
         run: |
           set -eu
           if [ -z "${RELEASE_TOKEN:-}" ]; then
-            echo "::warning::SECRET RELEASE_TOKEN is not set. Backend release was created, but service repos were not tagged."
+            echo "::error::SECRET RELEASE_TOKEN is not set. Backend release ${VERSION} was created, but service repos were NOT tagged — installer will skip it (images missing)."
             echo "Add a PAT as repository secret RELEASE_TOKEN (contents: write on Gml.Web.Api, Gml.Web.Client, Gml.Web.Proxy, Gml.Web.Skin.Service)."
-            exit 0
+            echo "Then re-run Auto Release, or manually tag the four service repos with ${VERSION}."
+            exit 1
           fi
 
           SHA="${GITHUB_SHA}"

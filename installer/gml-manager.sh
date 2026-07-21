@@ -7,6 +7,9 @@ ENV_URL="${ENV_URL:-https://raw.githubusercontent.com/$GITHUB_REPOSITORY/refs/he
 # Use GitHub Releases (not inherited fork tags). Fallback when there are no own releases yet.
 DEFAULT_RELEASES_URL="https://api.github.com/repos/$GITHUB_REPOSITORY/releases?per_page=100"
 DEFAULT_FALLBACK_VERSION="${GML_MANAGER_FALLBACK_VERSION:-master}"
+# GHCR packages that must exist for a release tag to be usable by compose.
+DEFAULT_GHCR_OWNER="${GML_MANAGER_GHCR_OWNER:-nik497926}"
+DEFAULT_REQUIRED_IMAGES="${GML_MANAGER_REQUIRED_IMAGES:-gml.web.api gml.web.client gml.web.proxy gml.web.skin.service}"
 
 SCRIPT_DIR=""
 if [ -f "$0" ]; then
@@ -50,6 +53,8 @@ message_format() {
             unknown_action) printf '%s' 'Неизвестное действие: %s' ;;
             no_stable_tags) printf '%s' 'По адресу %s не найдены стабильные релизы\n' ;;
             using_fallback_version) printf '%s' '[Gml] Своих релизов нет — используется образ: %s\n' ;;
+            skipping_incomplete_release) printf '%s' '[Gml] Пропуск %s: не все Docker-образы опубликованы в GHCR\n' ;;
+            using_fallback_incomplete) printf '%s' '[Gml] Нет полного набора образов для релизов — используется: %s\n' ;;
             action_menu) printf '%b' 'Выберите действие:\n  1) установить\n  2) обновить\n  3) удалить\n' ;;
             action_prompt) printf '%s' 'Действие [1]: ' ;;
             installation_directory) printf '%s' 'Каталог установки' ;;
@@ -110,6 +115,8 @@ message_format() {
         unknown_action) printf '%s' 'Unknown action: %s' ;;
         no_stable_tags) printf '%s' 'No stable releases found at %s\n' ;;
         using_fallback_version) printf '%s' '[Gml] No own releases found — using image tag: %s\n' ;;
+        skipping_incomplete_release) printf '%s' '[Gml] Skipping %s: not all Docker images are published to GHCR\n' ;;
+        using_fallback_incomplete) printf '%s' '[Gml] No release has a full image set — using: %s\n' ;;
         action_menu) printf '%b' 'Select action:\n  1) install\n  2) update\n  3) delete\n' ;;
         action_prompt) printf '%s' 'Action [1]: ' ;;
         installation_directory) printf '%s' 'Installation directory' ;;
@@ -410,19 +417,85 @@ extract_stable_release_tags() {
     done
 }
 
-# Fetch the latest own stable GitHub Release, or fall back to master images.
+# Check that a public GHCR image manifest exists for owner/image:tag.
+ghcr_image_exists() {
+    image="$1"
+    tag="$2"
+    token=""
+    http_code=""
+
+    token=$(curl -fsSL "https://ghcr.io/token?service=ghcr.io&scope=repository:${image}:pull" 2>/dev/null \
+        | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p') || token=""
+
+    if [ -z "$token" ]; then
+        return 1
+    fi
+
+    http_code=$(curl -sS -o /dev/null -w "%{http_code}" \
+        -H "Authorization: Bearer ${token}" \
+        -H "Accept: application/vnd.oci.image.index.v1+json,application/vnd.docker.distribution.manifest.list.v2+json,application/vnd.oci.image.manifest.v1+json,application/vnd.docker.distribution.manifest.v2+json" \
+        "https://ghcr.io/v2/${image}/manifests/${tag}" 2>/dev/null) || http_code="000"
+
+    [ "$http_code" = "200" ]
+}
+
+# True when Api/Client/Proxy/Skins all have the given tag in GHCR.
+release_images_ready() {
+    version="$1"
+    owner="${GML_MANAGER_GHCR_OWNER:-$DEFAULT_GHCR_OWNER}"
+    images="${GML_MANAGER_REQUIRED_IMAGES:-$DEFAULT_REQUIRED_IMAGES}"
+    image=""
+
+    for image in $images; do
+        if ! ghcr_image_exists "${owner}/${image}" "$version"; then
+            return 1
+        fi
+    done
+
+    return 0
+}
+
+# Fetch the latest own stable GitHub Release that has all GHCR images, or fall back to master.
 fetch_latest_stable_version() {
     releases_url="${GML_MANAGER_RELEASES_URL:-$DEFAULT_RELEASES_URL}"
     fallback_version="${GML_MANAGER_FALLBACK_VERSION:-$DEFAULT_FALLBACK_VERSION}"
     latest_version=""
+    candidates=""
+    candidate=""
+    remaining=""
+    had_releases=0
 
     if releases_json=$(curl -fsSL "$releases_url"); then
-        latest_version=$(printf '%s' "$releases_json" | extract_stable_release_tags | pick_greatest_stable_tag)
+        candidates=$(printf '%s' "$releases_json" | extract_stable_release_tags)
+    fi
+
+    if [ -n "$candidates" ]; then
+        had_releases=1
+        remaining="$candidates"
+
+        while [ -n "$remaining" ]; do
+            candidate=$(printf '%s\n' "$remaining" | pick_greatest_stable_tag)
+            if [ -z "$candidate" ]; then
+                break
+            fi
+
+            if release_images_ready "$candidate"; then
+                latest_version="$candidate"
+                break
+            fi
+
+            message skipping_incomplete_release "$candidate" >&2
+            remaining=$(printf '%s\n' "$remaining" | grep -vxF "$candidate" || true)
+        done
     fi
 
     if [ -z "$latest_version" ]; then
-        message no_stable_tags "$releases_url" >&2
-        message using_fallback_version "$fallback_version" >&2
+        if [ "$had_releases" -eq 0 ]; then
+            message no_stable_tags "$releases_url" >&2
+            message using_fallback_version "$fallback_version" >&2
+        else
+            message using_fallback_incomplete "$fallback_version" >&2
+        fi
         latest_version="$fallback_version"
     fi
 
