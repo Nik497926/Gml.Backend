@@ -6,12 +6,12 @@ on:
       install_version:
         description: Docker image tag to install
         required: true
-        default: v2025.3.2
+        default: master
         type: string
       update_version:
         description: Docker image tag to update to
         required: true
-        default: v2025.3.1
+        default: master
         type: string
   push:
     branches:
@@ -60,8 +60,8 @@ jobs:
 
     env:
       INSTALL_DIR: /tmp/gml-manager-ci-${{ github.run_id }}-${{ github.run_attempt }}-${{ matrix.distro }}-${{ matrix.arch }}
-      INSTALL_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.install_version || 'v2025.3.2' }}
-      UPDATE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.update_version || 'v2025.3.1' }}
+      INSTALL_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.install_version || 'master' }}
+      UPDATE_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.update_version || 'master' }}
 
     steps:
       - name: Checkout

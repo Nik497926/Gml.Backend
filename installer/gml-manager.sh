@@ -4,7 +4,9 @@ DEFAULT_BASE_DIR="/srv/gml"
 GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-Nik497926/Gml.Backend}"
 COMPOSE_URL="${COMPOSE_URL:-https://raw.githubusercontent.com/$GITHUB_REPOSITORY/refs/heads/master/docker-compose-installer.yml}"
 ENV_URL="${ENV_URL:-https://raw.githubusercontent.com/$GITHUB_REPOSITORY/refs/heads/master/installer/installer.env}"
-DEFAULT_TAGS_URL="https://api.github.com/repos/$GITHUB_REPOSITORY/tags?per_page=100"
+# Use GitHub Releases (not inherited fork tags). Fallback when there are no own releases yet.
+DEFAULT_RELEASES_URL="https://api.github.com/repos/$GITHUB_REPOSITORY/releases?per_page=100"
+DEFAULT_FALLBACK_VERSION="${GML_MANAGER_FALLBACK_VERSION:-master}"
 
 SCRIPT_DIR=""
 if [ -f "$0" ]; then
@@ -46,12 +48,13 @@ message_format() {
             unknown_command) printf '%s' 'Неизвестная команда: %s' ;;
             unknown_argument) printf '%s' 'Неизвестный аргумент: %s' ;;
             unknown_action) printf '%s' 'Неизвестное действие: %s' ;;
-            no_stable_tags) printf '%s' 'По адресу %s не найдены теги стабильных версий\n' ;;
+            no_stable_tags) printf '%s' 'По адресу %s не найдены стабильные релизы\n' ;;
+            using_fallback_version) printf '%s' '[Gml] Своих релизов нет — используется образ: %s\n' ;;
             action_menu) printf '%b' 'Выберите действие:\n  1) установить\n  2) обновить\n  3) удалить\n' ;;
             action_prompt) printf '%s' 'Действие [1]: ' ;;
             installation_directory) printf '%s' 'Каталог установки' ;;
             gml_version) printf '%s' 'Версия Gml' ;;
-            latest_version_error) printf '%s' 'Не удалось определить последнюю стабильную версию на GitHub. Передайте --version, чтобы использовать конкретную версию.' ;;
+            latest_version_error) printf '%s' 'Не удалось определить версию. Передайте --version (например master).' ;;
             using_latest_version) printf '%s' '[Gml] Используется последняя стабильная версия: %s\n' ;;
             root_required) printf '%s' 'Этот скрипт необходимо запустить от имени root' ;;
             step_failed) printf '%s' '[Gml] Шаг завершился с ошибкой: %s (код выхода %s)\n' ;;
@@ -105,12 +108,13 @@ message_format() {
         unknown_command) printf '%s' 'Unknown command: %s' ;;
         unknown_argument) printf '%s' 'Unknown argument: %s' ;;
         unknown_action) printf '%s' 'Unknown action: %s' ;;
-        no_stable_tags) printf '%s' 'No stable version tags found at %s\n' ;;
+        no_stable_tags) printf '%s' 'No stable releases found at %s\n' ;;
+        using_fallback_version) printf '%s' '[Gml] No own releases found — using image tag: %s\n' ;;
         action_menu) printf '%b' 'Select action:\n  1) install\n  2) update\n  3) delete\n' ;;
         action_prompt) printf '%s' 'Action [1]: ' ;;
         installation_directory) printf '%s' 'Installation directory' ;;
         gml_version) printf '%s' 'Gml version' ;;
-        latest_version_error) printf '%s' 'Unable to resolve the latest stable version from GitHub. Pass --version to use a specific version.' ;;
+        latest_version_error) printf '%s' 'Unable to resolve version. Pass --version (for example master).' ;;
         using_latest_version) printf '%s' '[Gml] Using latest stable version: %s\n' ;;
         root_required) printf '%s' 'This script must be run as root' ;;
         step_failed) printf '%s' '[Gml] Step failed: %s (exit code %s)\n' ;;
@@ -316,11 +320,12 @@ parse_args() {
     fi
 }
 
-# Extract the greatest stable numeric tag (vN.N[.N...]) from GitHub tags JSON.
-extract_latest_stable_tag() {
-    sed -n 's/.*"name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | awk '
+# Pick the greatest stable numeric tag (vN.N[.N...]) from a newline-separated list.
+pick_greatest_stable_tag() {
+    awk '
         {
             tag = $0
+            gsub(/\r/, "", tag)
 
             if (tag !~ /^v/) {
                 next
@@ -354,7 +359,7 @@ extract_latest_stable_tag() {
 
                 for (i = 1; i <= max_part_count; i++) {
                     current_part = i <= part_count ? parts[i] + 0 : 0
-                    best_part = i <= best_part_count ? best_parts[i] : 0
+                    best_part = i <= best_part_count ? best_parts[i] + 0 : 0
 
                     if (current_part > best_part) {
                         is_better = 1
@@ -387,21 +392,38 @@ extract_latest_stable_tag() {
         END {
             if (found == 1) {
                 print best_tag
-            } else {
-                exit 1
             }
         }
     '
 }
 
-# Fetch the latest stable release tag from GitHub, or from an override URL in tests.
+# Extract non-prerelease tag_name values from GitHub Releases JSON.
+extract_stable_release_tags() {
+    tr -d '\n' | sed 's/},{/}\n{/g' | while IFS= read -r block || [ -n "$block" ]; do
+        case "$block" in
+            *'"prerelease":true'*|*'"prerelease": true'*)
+                continue
+                ;;
+        esac
+
+        printf '%s\n' "$block" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p'
+    done
+}
+
+# Fetch the latest own stable GitHub Release, or fall back to master images.
 fetch_latest_stable_version() {
-    tags_url="${GML_MANAGER_TAGS_URL:-$DEFAULT_TAGS_URL}"
-    latest_version=$(curl -fsSL "$tags_url" | extract_latest_stable_tag)
+    releases_url="${GML_MANAGER_RELEASES_URL:-$DEFAULT_RELEASES_URL}"
+    fallback_version="${GML_MANAGER_FALLBACK_VERSION:-$DEFAULT_FALLBACK_VERSION}"
+    latest_version=""
+
+    if releases_json=$(curl -fsSL "$releases_url"); then
+        latest_version=$(printf '%s' "$releases_json" | extract_stable_release_tags | pick_greatest_stable_tag)
+    fi
 
     if [ -z "$latest_version" ]; then
-        message no_stable_tags "$tags_url" >&2
-        return 1
+        message no_stable_tags "$releases_url" >&2
+        message using_fallback_version "$fallback_version" >&2
+        latest_version="$fallback_version"
     fi
 
     printf "%s\n" "$latest_version"
