@@ -93,7 +93,7 @@ PORT_GML_SKINS=5006
 
 # Микросервисы
 SERVICE_TEXTURE_ENDPOINT=http://gml-web-skins:8085
-MARKET_ENDPOINT=https://gml-market.recloud.tech
+MARKET_ENDPOINT=https://marketplace-api.unicorecms2.ru
 ```
 
 ### Шаг 4. Настройте клиентский файл `.env`
@@ -103,8 +103,13 @@ MARKET_ENDPOINT=https://gml-market.recloud.tech
 ```plaintext
 # Адрес Web API
 NEXT_PUBLIC_BACKEND_URL=http://localhost:5000/api/v1
-NEXT_PUBLIC_MARKETPLACE_URL=https://gml-market.recloud.tech
+# Сайт маркетплейса (регистрация проекта и получение API-ключа)
+NEXT_PUBLIC_MARKETPLACE_URL=https://marketplace.unicorecms2.ru
+# API маркетплейса (каталог)
+NEXT_PUBLIC_MARKETPLACE_API_URL=https://marketplace-api.unicorecms2.ru
 ```
+
+Ключ вставляется в панели Gml (раздел «Маркетплейс»). Сайт маркета перед выдачей ключа проверяет backend через `GET /api/v1/marketplace/bridge`.
 
 ### Шаг 5. Запустите проект через Docker
 

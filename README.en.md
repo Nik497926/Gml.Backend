@@ -95,7 +95,7 @@ PORT_GML_SKINS=5006
 
 # Microservices
 SERVICE_TEXTURE_ENDPOINT=http://gml-web-skins:8085
-MARKET_ENDPOINT=https://gml-market.recloud.tech
+MARKET_ENDPOINT=https://marketplace-api.unicorecms2.ru
 ```
 
 ### Step 4: Configure the Client `.env` File
@@ -105,8 +105,13 @@ Create or edit the `.env` file in the `src/Gml.Web.Client/` directory:
 ```plaintext
 # Web API address
 NEXT_PUBLIC_BACKEND_URL=http://localhost:5000/api/v1
-NEXT_PUBLIC_MARKETPLACE_URL=https://gml-market.recloud.tech
+# Marketplace website (project registration and API key)
+NEXT_PUBLIC_MARKETPLACE_URL=https://marketplace.unicorecms2.ru
+# Marketplace API (catalog)
+NEXT_PUBLIC_MARKETPLACE_API_URL=https://marketplace-api.unicorecms2.ru
 ```
+
+Paste the key in the Gml panel (Marketplace section). The marketplace site verifies your backend with `GET /api/v1/marketplace/bridge` before issuing a key.
 
 ### Step 5: Launch the Project with Docker
 

@@ -76,6 +76,9 @@ services:
         max-file: "5"
     environment:
       - TZ=Europe/Moscow
+      - NEXT_PUBLIC_BACKEND_URL=${BACKEND_ENDPOINT:-http://localhost:5000/api/v1}
+      - NEXT_PUBLIC_MARKETPLACE_URL=${MARKETPLACE_SITE_URL:-https://marketplace.unicorecms2.ru}
+      - NEXT_PUBLIC_MARKETPLACE_API_URL=${MARKET_ENDPOINT}
 
   gml-web-skins:
     image: gml-web-skins-image
