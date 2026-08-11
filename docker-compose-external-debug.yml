@@ -72,7 +72,15 @@ services:
       - NEXT_PUBLIC_BACKEND_URL=${BACKEND_ENDPOINT:-http://localhost:5000/api/v1}
       - NEXT_PUBLIC_MARKETPLACE_URL=${MARKETPLACE_SITE_URL:-https://marketplace.unicorecms2.ru}
       - NEXT_PUBLIC_MARKETPLACE_API_URL=${MARKET_ENDPOINT}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+    networks:
+      - gml-network
 
+  gml-web-skins:
     image: gml-web-skins-image
     container_name: gml-web-skins
     restart: always
@@ -85,8 +93,6 @@ services:
       - gml-network
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - NEXT_PUBLIC_MARKETPLACE_URL=${MARKET_ENDPOINT}
-      - NEXT_PUBLIC_BACKEND_URL=${BACKEND_ENDPOINT}
       - ASPNETCORE_URLS=http://+:8085;
       - TZ=Europe/Moscow
     user: "${UID}:${GID}"
