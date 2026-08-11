@@ -66,6 +66,8 @@ services:
         max-file: "5"
     environment:
       - TZ=Europe/Moscow
+      - NEXT_PUBLIC_MARKETPLACE_URL=${MARKETPLACE_SITE_URL:-https://marketplace.unicorecms2.ru}
+      - NEXT_PUBLIC_MARKETPLACE_API_URL=${MARKET_ENDPOINT:-https://marketplace-api.unicorecms2.ru}
 
   gml-web-skins:
     image: ghcr.io/nik497926/gml.web.skin.service:master

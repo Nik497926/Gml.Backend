@@ -829,6 +829,7 @@ write_default_env() {
     copy_env_template "$env_file" || return 1
     upsert_env_value "$env_file" "GML_VERSION" "$VERSION"
     upsert_env_value "$env_file" "SECURITY_KEY" "$security_key"
+    sync_marketplace_env "$env_file"
 }
 
 # Insert or update one KEY=value entry while preserving all other .env lines.
@@ -861,7 +862,7 @@ upsert_env_value() {
     mv "$tmp_file" "$env_file"
 }
 
-# Create .env on first install or only update GML_VERSION afterwards.
+# Create .env on first install; on update keep user keys and sync marketplace defaults.
 ensure_env() {
     if [ ! -f "$BASE_DIR/.env" ]; then
         write_default_env
@@ -869,6 +870,27 @@ ensure_env() {
     fi
 
     upsert_env_value "$BASE_DIR/.env" "GML_VERSION" "$VERSION"
+    sync_marketplace_env "$BASE_DIR/.env"
+}
+
+# Marketplace defaults shipped with the installer template.
+DEFAULT_MARKET_API_URL="https://marketplace-api.unicorecms2.ru"
+DEFAULT_MARKET_SITE_URL="https://marketplace.unicorecms2.ru"
+OBSOLETE_MARKET_URL="https://gml-market.recloud.tech"
+
+# Add missing marketplace keys and migrate the old Recloud Market URL.
+sync_marketplace_env() {
+    env_file="$1"
+    current_market=$(get_env_value "$env_file" "MARKET_ENDPOINT")
+    current_site=$(get_env_value "$env_file" "MARKETPLACE_SITE_URL")
+
+    if [ -z "$current_market" ] || [ "$current_market" = "$OBSOLETE_MARKET_URL" ]; then
+        upsert_env_value "$env_file" "MARKET_ENDPOINT" "$DEFAULT_MARKET_API_URL"
+    fi
+
+    if [ -z "$current_site" ] || [ "$current_site" = "$OBSOLETE_MARKET_URL" ]; then
+        upsert_env_value "$env_file" "MARKETPLACE_SITE_URL" "$DEFAULT_MARKET_SITE_URL"
+    fi
 }
 
 # Docker Compose wrappers keep each operation as an isolated run_step target.
